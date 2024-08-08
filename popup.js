@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', function() {
         var downloadCsvButton = document.getElementById('downloadCsvButton');
         var resultsTable = document.getElementById('resultsTable');
         var filenameInput = document.getElementById('filenameInput');
+        var filterInput = document.getElementById('filterInput');
 
         if (currentTab && currentTab.url.includes("://www.google.com/maps/search")) {
             document.getElementById('message').textContent = "Let's scrape Google Maps!";
@@ -15,7 +16,7 @@ document.addEventListener('DOMContentLoaded', function() {
             messageElement.innerHTML = '';
             var linkElement = document.createElement('a');
             linkElement.href = 'https://www.google.com/maps/search/';
-            linkElement.textContent = "Go to Google Maps Search.";
+            linkElement.textContent = "Go to Google Maps Search in a new tab. Then search for your business.";
             linkElement.target = '_blank'; 
             messageElement.appendChild(linkElement);
 
@@ -36,7 +37,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Define and add headers to the table
                 const headers = ['Title', 'Rating', 'Reviews', 'Phone', 'Industry', 'Address', 'Website', 'Google Maps Link'];
                 const headerRow = document.createElement('tr');
-                headers.forEach(headerText => {
+                headers.forEach((headerText, index) => {
                     const header = document.createElement('th');
                     header.textContent = headerText;
                     headerRow.appendChild(header);
@@ -60,6 +61,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     resultsTable.appendChild(row);
                 });
 
+                // Add sorting functionality
+                addSortingFunctionality();
+
                 if (results && results[0] && results[0].result && results[0].result.length > 0) {
                     downloadCsvButton.disabled = false;
                 }
@@ -77,9 +81,60 @@ document.addEventListener('DOMContentLoaded', function() {
             downloadCsv(csv, filename); 
         });
 
+        filterInput.addEventListener('input', function() {
+            const filterText = this.value.toLowerCase();
+            const rows = resultsTable.querySelectorAll('tr:nth-child(n+2)'); // Skip header row
+
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                const matches = Array.from(cells).some(cell => cell.textContent.toLowerCase().includes(filterText));
+                row.style.display = matches ? '' : 'none';
+            });
+        });
+
     });
 });
 
+function addSortingFunctionality() {
+    const headers = document.querySelectorAll('#resultsTable th');
+    
+    headers.forEach((header, index) => {
+        header.addEventListener('click', () => {
+            sortTable(index);
+        });
+    });
+}
+
+function sortTable(columnIndex) {
+    const resultsTable = document.getElementById('resultsTable');
+    const rows = Array.from(resultsTable.querySelectorAll('tr:nth-child(n+2)')); // Skip header row
+    const isAscending = headerSortDirection === 'asc';
+    
+    rows.sort((rowA, rowB) => {
+        const cellA = rowA.children[columnIndex].textContent.trim();
+        const cellB = rowB.children[columnIndex].textContent.trim();
+        
+        if (columnIndex === 1 || columnIndex === 2) { // Sort numerical columns (Rating, Reviews)
+            return isAscending 
+                ? parseFloat(cellA) - parseFloat(cellB) 
+                : parseFloat(cellB) - parseFloat(cellA);
+        } else {
+            return isAscending
+                ? cellA.localeCompare(cellB)
+                : cellB.localeCompare(cellA);
+        }
+    });
+    
+    headerSortDirection = isAscending ? 'desc' : 'asc';
+
+    // Remove existing rows
+    resultsTable.querySelectorAll('tr:nth-child(n+2)').forEach(row => row.remove());
+    
+    // Append sorted rows
+    rows.forEach(row => resultsTable.appendChild(row));
+}
+
+let headerSortDirection = 'asc'; // Default sorting direction
 
 function scrapeData() {
     var links = Array.from(document.querySelectorAll('a[href^="https://www.google.com/maps/place"]'));
@@ -177,24 +232,29 @@ function tableToCsv(table) {
     for (var i = 0; i < rows.length; i++) {
         var row = [], cols = rows[i].querySelectorAll('td, th');
         
-        for (var j = 0; j < cols.length; j++) {
-            row.push('"' + cols[j].innerText + '"');
-        }
-        csv.push(row.join(','));
-    }
-    return csv.join('\n');
+        for (var j = 0; j < cols.length; j++) {row.push(’”’ + cols[j].innerText + ‘”’);
+}
+csv.push(row.join(’,’));
+}
+return csv.join(’\n’);
 }
 
 // Download the CSV file
 function downloadCsv(csv, filename) {
-    var csvFile;
-    var downloadLink;
-
-    csvFile = new Blob([csv], {type: 'text/csv'});
-    downloadLink = document.createElement('a');
-    downloadLink.download = filename;
-    downloadLink.href = window.URL.createObjectURL(csvFile);
-    downloadLink.style.display = 'none';
-    document.body.appendChild(downloadLink);
-    downloadLink.click();
-}
+var csvFile;
+var downloadLink;
+csvFile = new Blob([csv], {type: 'text/csv'});
+downloadLink = document.createElement('a');
+downloadLink.download = filename;
+downloadLink.href = window.URL.createObjectURL(csvFile);
+downloadLink.style.display = 'none';
+document.body.appendChild(downloadLink);
+downloadLink.click();
+csvFile = new Blob([csv], {type: 'text/csv'});
+downloadLink = document.createElement('a');
+downloadLink.download = filename;
+downloadLink.href = window.URL.createObjectURL(csvFile);
+downloadLink.style.display = 'none';
+document.body.appendChild(downloadLink);
+downloadLink.click();
+           
